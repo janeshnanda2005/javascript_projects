@@ -1,0 +1,29 @@
+<html lang="en">
+<%- include("./partials/head.ejs") %>
+
+<body>
+  <%- include("./partials/nav.ejs") %>
+
+  <div class="blog content">
+    <h2><%= blog.title %></h2>
+    <p><%= blog.body %></p>
+
+    <div class="blog-actions">
+      <a href="/blogs/<%= blog.id %>/edit" class="btn btn-edit">Edit</a>
+      <button onclick="deleteBlog('<%= blog.id %>')" class="btn btn-delete">Delete</button>
+    </div>
+  </div>
+
+  <%- include("./partials/footer.ejs") %>
+
+  <script>
+    function deleteBlog(id) {
+      if (confirm('Are you sure?')) {
+        fetch(`/blogs/${id}`, { method: 'DELETE' })
+          .then(() => window.location.href = '/')
+          .catch(err => alert('Error deleting blog'));
+      }
+    }
+  </script>
+</body>
+</html>
