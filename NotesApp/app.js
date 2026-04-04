@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const morgan  = require("morgan");
 const { createClient } = require("@supabase/supabase-js");
 require('dotenv').config();
@@ -6,6 +7,7 @@ require('dotenv').config();
 const app = express();
 
 app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 
 // Supabase configuration
 const SUPABASE_URL = process.env.SUPABASE_URL;
