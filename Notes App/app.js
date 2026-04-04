@@ -1,11 +1,15 @@
 const express = require("express");
 const morgan  = require("morgan");
-const fs = require("fs");
-const path = require("path");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 
 app.set("view engine", "ejs");
+
+// Supabase configuration
+const SUPABASE_URL = "https://aisnltwokrulexslahxn.supabase.co";
+const SUPABASE_KEY = "sb_publishable_IK--yOW2_DLn6dmUR4Wawg_DhlMh6OO";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Middleware
 app.use(express.static('public'));
@@ -21,24 +25,78 @@ app.use((req,res,next) => {
     next();
 });
 
-// Data storage file
-const dataFile = path.join(__dirname, 'blogs.json');
-
-// Helper functions
-const readBlogs = () => {
+// Helper functions for Supabase
+const readBlogs = async () => {
     try {
-        if (fs.existsSync(dataFile)) {
-            const data = fs.readFileSync(dataFile, 'utf8');
-            return JSON.parse(data);
+        const { data, error } = await supabase
+            .from('blogs')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            console.error('Error reading blogs:', error);
+            return [];
         }
-        return [];
+        return data || [];
     } catch (err) {
+        console.error('Error:', err);
         return [];
     }
 };
 
-const writeBlogs = (blogs) => {
-    fs.writeFileSync(dataFile, JSON.stringify(blogs, null, 2));
+const writeBlog = async (blog) => {
+    try {
+        const { data, error } = await supabase
+            .from('blogs')
+            .insert([blog])
+            .select();
+        
+        if (error) {
+            console.error('Error writing blog:', error);
+            return null;
+        }
+        return data?.[0];
+    } catch (err) {
+        console.error('Error:', err);
+        return null;
+    }
+};
+
+const updateBlog = async (id, updates) => {
+    try {
+        const { data, error } = await supabase
+            .from('blogs')
+            .update(updates)
+            .eq('id', id)
+            .select();
+        
+        if (error) {
+            console.error('Error updating blog:', error);
+            return null;
+        }
+        return data?.[0];
+    } catch (err) {
+        console.error('Error:', err);
+        return null;
+    }
+};
+
+const deleteBlog = async (id) => {
+    try {
+        const { error } = await supabase
+            .from('blogs')
+            .delete()
+            .eq('id', id);
+        
+        if (error) {
+            console.error('Error deleting blog:', error);
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error('Error:', err);
+        return false;
+    }
 };
 
 const generateId = () => {
@@ -46,8 +104,8 @@ const generateId = () => {
 };
 
 // GET / - Home page with all blogs
-app.get("/", (req,res) => {
-    const blogs = readBlogs();
+app.get("/", async (req,res) => {
+    const blogs = await readBlogs();
     res.render("index", {title:"Home", blogs: blogs});
 });
 
@@ -57,81 +115,95 @@ app.get("/create", (req,res) => {
 });
 
 // POST /blogs - Create new blog
-app.post("/blogs", (req,res) => {
+app.post("/blogs", async (req,res) => {
     const {title, snippet, body} = req.body;
     
     if (!title || !snippet || !body) {
         return res.status(400).render("create", {title: "Create Blog", error: "All fields are required"});
     }
     
-    const blogs = readBlogs();
     const newBlog = {
         id: generateId(),
         title,
         snippet,
         body,
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString()
     };
     
-    blogs.unshift(newBlog);
-    writeBlogs(blogs);
+    const result = await writeBlog(newBlog);
+    if (!result) {
+        return res.status(500).render("create", {title: "Create Blog", error: "Failed to create blog"});
+    }
+    
     res.redirect("/");
 });
 
 // GET /blogs/:id - View single blog
-app.get("/blogs/:id", (req,res) => {
-    const blogs = readBlogs();
-    const blog = blogs.find(b => b.id === req.params.id);
-    
-    if (!blog) {
-        return res.status(404).render("404", {title: "404"});
+app.get("/blogs/:id", async (req,res) => {
+    try {
+        const { data, error } = await supabase
+            .from('blogs')
+            .select('*')
+            .eq('id', req.params.id)
+            .single();
+        
+        if (error || !data) {
+            return res.status(404).render("404", {title: "404"});
+        }
+        
+        res.render("blog", {title: data.title, blog: data});
+    } catch (err) {
+        res.status(404).render("404", {title: "404"});
     }
-    
-    res.render("blog", {title: blog.title, blog: blog});
 });
 
 // GET /blogs/:id/edit - Show edit form
-app.get("/blogs/:id/edit", (req,res) => {
-    const blogs = readBlogs();
-    const blog = blogs.find(b => b.id === req.params.id);
-    
-    if (!blog) {
-        return res.status(404).render("404", {title: "404"});
+app.get("/blogs/:id/edit", async (req,res) => {
+    try {
+        const { data, error } = await supabase
+            .from('blogs')
+            .select('*')
+            .eq('id', req.params.id)
+            .single();
+        
+        if (error || !data) {
+            return res.status(404).render("404", {title: "404"});
+        }
+        
+        res.render("edit", {title: "Edit Blog", blog: data});
+    } catch (err) {
+        res.status(404).render("404", {title: "404"});
     }
-    
-    res.render("edit", {title: "Edit Blog", blog: blog});
 });
 
-// PUT /blogs/:id - Update blog
-app.post("/blogs/:id", (req,res) => {
+// POST /blogs/:id - Update blog
+app.post("/blogs/:id", async (req,res) => {
     const {title, snippet, body} = req.body;
-    const blogs = readBlogs();
-    const blog = blogs.find(b => b.id === req.params.id);
     
-    if (!blog) {
+    const updates = {
+        title,
+        snippet,
+        body,
+        updated_at: new Date().toISOString()
+    };
+    
+    const result = await updateBlog(req.params.id, updates);
+    
+    if (!result) {
         return res.status(404).render("404", {title: "404"});
     }
     
-    blog.title = title;
-    blog.snippet = snippet;
-    blog.body = body;
-    blog.updatedAt = new Date().toISOString();      
-    
-    writeBlogs(blogs);
-    res.redirect(`/blogs/${blog.id}`);
+    res.redirect(`/blogs/${req.params.id}`);
 });
 
 // DELETE /blogs/:id - Delete blog
-app.delete("/blogs/:id", (req,res) => {
-    const blogs = readBlogs();
-    const index = blogs.findIndex(b => b.id === req.params.id);
+app.delete("/blogs/:id", async (req,res) => {
+    const success = await deleteBlog(req.params.id);
     
-    if (index === -1) {
+    if (!success) {
         return res.status(404).json({error: "Blog not found"});
     }
     
-    blogs.splice(index, 1);
-    writeBlogs(blogs);
     res.json({message: "Blog deleted"});
 });
 

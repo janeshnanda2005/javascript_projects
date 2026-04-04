@@ -1,0 +1,10 @@
+###GET /
+
+GET http://localhost:5000/
+
+POST https://localhost:5000:/auth/login
+content-type: application/json
+{
+    "username":"testuser",
+    "password":"testpass"
+}
