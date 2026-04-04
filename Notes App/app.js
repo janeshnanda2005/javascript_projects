@@ -1,14 +1,15 @@
 const express = require("express");
 const morgan  = require("morgan");
 const { createClient } = require("@supabase/supabase-js");
+require('dotenv').config();
 
 const app = express();
 
 app.set("view engine", "ejs");
 
 // Supabase configuration
-const SUPABASE_URL = "https://aisnltwokrulexslahxn.supabase.co";
-const SUPABASE_KEY = "sb_publishable_IK--yOW2_DLn6dmUR4Wawg_DhlMh6OO";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Middleware
@@ -219,6 +220,6 @@ app.use((req,res) =>{
     res.status(404).render("404",{"title":"404"});
 });
 
-app.listen(3000,() => {
+app.listen(process.env.PORT || 3000,() => {
     console.log("Server running at http://localhost:3000/");
 });

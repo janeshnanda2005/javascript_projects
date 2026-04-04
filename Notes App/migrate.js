@@ -1,10 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
+require('dotenv').config();
 
 // Supabase configuration
-const SUPABASE_URL = "https://aisnltwokrulexslahxn.supabase.co";
-const SUPABASE_KEY = "sb_publishable_IK--yOW2_DLn6dmUR4Wawg_DhlMh6OO";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const dataFile = path.join(__dirname, 'blogs.json');
