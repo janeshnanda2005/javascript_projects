@@ -77,21 +77,36 @@ router.put('/:id', (req, res) => {
 })
 
 // Delete a todo
-router.delete('/:id', (req, res) => {
-    try {
-        const { id } = req.params
-        const userId = req.userId
+// router.delete('/:id', (req, res) => {
+//     try {
+//         const { id } = req.params
+//         const userId = req.userId
         
-        console.log('Deleting todo:', id, 'for user:', userId)
+//         console.log('Deleting todo:', id, 'for user:', userId)
         
-        const deleteTodo = db.prepare(`DELETE FROM todos WHERE id = ? AND user_id = ?`)
-        const result = deleteTodo.run(id, userId)
+//         const deleteTodo = db.prepare(`DELETE FROM todos WHERE id = ? AND user_id = ?`)
+//         const result = deleteTodo.run(id, userId)
         
-        res.json({ message: "Todo deleted", changes: result.changes })
-    } catch(err) {
-        console.error('Error deleting todo:', err)
-        res.status(500).json({ message: 'Error deleting todo', error: err.message })
+//         res.json({ message: "Todo deleted", changes: result.changes })
+//     } catch(err) {
+//         console.error('Error deleting todo:', err)
+//         res.status(500).json({ message: 'Error deleting todo', error: err.message })
+//     }
+// })
+router.delete('/:id', (req,res) => {
+    try{
+        const {id} = req.params
+        const userid = req.userId
+        console.log("Deleting todo:",id,"user: ",userid);
+
+        const deleterecord = db.prepare("DELETE  FROM todos WHERE id = ? AND user_id = ?")
+        const result = deleterecord.run(id,userid);
+
+        res.status(200).json({message: "Todo deleted", changes: result.changes})
+    }
+    catch(err){
+        console.error("Error deleting todo:",err)
+        res.status(500).json({message:"Error for todo application",error:err.message})
     }
 })
-
 export default router
