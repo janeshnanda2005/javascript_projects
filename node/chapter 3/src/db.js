@@ -9,6 +9,8 @@ db.exec(`
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
+        language TEXT,
+        Nos_orders INTEGER DEFAULT 0,
         password TEXT
     )
 `)

@@ -1,7 +1,7 @@
 import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import prisma from '../prismaclient.js'
+import db from '../db.js'
 
 const router = express.Router()
 
@@ -16,24 +16,17 @@ router.post('/register', async (req, res) => {
 
     // save the new user and hashed password to the db
     try {
-        const user = await prisma.user.create({
-            data: {
-                username,
-                password: hashedPassword
-            }
-        })
+        const insertUser = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)')
+        const result = insertUser.run(username, hashedPassword)
+        const userId = result.lastInsertRowid
 
         // now that we have a user, I want to add their first todo for them
         const defaultTodo = `Hello :) Add your first todo!`
-        await prisma.Todo.create({
-            data: {
-                task: defaultTodo,
-                userId: user.id
-            }
-        })
+        const insertTodo = db.prepare('INSERT INTO todos (task, user_id) VALUES (?, ?)')
+        insertTodo.run(defaultTodo, userId)
 
         // create a token
-        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' })
+        const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '30d' })
         res.json({ token })
     } catch (err) {
         console.log(err.message)
@@ -49,9 +42,8 @@ router.post('/login', async (req, res) => {
     const { username, password } = req.body
 
     try {
-        const user = await prisma.user.findUnique({
-            where: { username }
-        })
+        const getUser = db.prepare('SELECT * FROM users WHERE username = ?')
+        const user = getUser.get(username)
 
         // if we cannot find a user associated with that username, return out from the function
         if (!user) { return res.status(404).send({ message: "User not found" }) }

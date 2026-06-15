@@ -1,5 +1,5 @@
 import express from 'express'
-import prisma from '../prismaclient.js'
+import db from '../db.js'
 
 const router = express.Router()
 
@@ -9,18 +9,16 @@ router.get('/', async (req, res) => {
         console.log('Fetching todos for user:', req.userId)
         
         // Verify user exists
-        const userExists = await prisma.user.findUnique({
-            where: { id: req.userId }
-        })
+        const getUser = db.prepare('SELECT id FROM users WHERE id = ?')
+        const userExists = getUser.get(req.userId)
         
         if (!userExists) {
             console.log('User does not exist:', req.userId)
             return res.status(401).json({ message: 'User not found - please login again' })
         }
         
-        const todos = await prisma.Todo.findMany({
-            where: { userId: req.userId }
-        })
+        const getTodos = db.prepare('SELECT * FROM todos WHERE user_id = ?')
+        const todos = getTodos.all(req.userId)
         console.log('Found todos:', todos)
         res.json(todos)
     } catch(err) {
@@ -40,21 +38,17 @@ router.post('/', async (req, res) => {
         }
         
         // Verify user exists
-        const userExists = await prisma.user.findUnique({
-            where: { id: req.userId }
-        })
+        const getUser = db.prepare('SELECT id FROM users WHERE id = ?')
+        const userExists = getUser.get(req.userId)
         
         if (!userExists) {
             console.log('User does not exist:', req.userId)
             return res.status(401).json({ message: 'User not found - please login again' })
         }
         
-        const todo = await prisma.Todo.create({
-            data: {
-                task,
-                userId: req.userId
-            }
-        })
+        const insertTodo = db.prepare('INSERT INTO todos (task, user_id) VALUES (?, ?)')
+        const result = insertTodo.run(task, req.userId)
+        const todo = { id: result.lastInsertRowid, task, user_id: req.userId, completed: 0 }
 
         console.log('Todo created:', todo)
         res.json(todo)
@@ -73,18 +67,10 @@ router.put('/:id', async (req, res) => {
         
         console.log('Updating todo:', id, 'for user:', userId, 'completed:', completed)
         
-        const updatedTodo = await prisma.Todo.updateMany({
-            where: { 
-                id: parseInt(id),
-                userId: userId 
-            },
-            data: {
-                completed,
-                task
-            }
-        })
+        const updateTodo = db.prepare('UPDATE todos SET completed = ?, task = ? WHERE id = ? AND user_id = ?')
+        const result = updateTodo.run(completed, task, parseInt(id), userId)
 
-        res.json({ message: "Todo updated", changes: updatedTodo.count })
+        res.json({ message: "Todo updated", changes: result.changes })
     } catch(err) {
         console.error('Error updating todo:', err)
         res.status(500).json({ message: 'Error updating todo', error: err.message })
@@ -99,14 +85,10 @@ router.delete('/:id', async (req, res) => {
         
         console.log('Deleting todo:', id, 'for user:', userId)
         
-        const result = await prisma.Todo.deleteMany({
-            where: {
-                id: parseInt(id),
-                userId: userId
-            }
-        })
+        const deleteTodo = db.prepare('DELETE FROM todos WHERE id = ? AND user_id = ?')
+        const result = deleteTodo.run(parseInt(id), userId)
         
-        res.status(200).json({ message: "Todo deleted", changes: result.count })
+        res.status(200).json({ message: "Todo deleted", changes: result.changes })
     } catch(err) {
         console.error('Error deleting todo:', err)
         res.status(500).json({ message: "Error deleting todo", error: err.message })

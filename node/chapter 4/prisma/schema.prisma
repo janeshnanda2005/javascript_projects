@@ -21,10 +21,10 @@ model user {
   todos Todo[]
 }
 
-model Todo{
+model Todo {
   id  Int @id @default(autoincrement())
   task String
   completed Boolean @default(false)
   userId Int
-  user User @relation(fields: [userId],refrences: [id])
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

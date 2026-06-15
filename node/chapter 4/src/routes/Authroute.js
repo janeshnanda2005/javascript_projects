@@ -8,10 +8,9 @@ const router = express.Router()
 // Register a new user endpoing /auth/register
 router.post('/register', async (req, res) => {
     const { username, password } = req.body
-    // save the username and an irreversibly encrypted password
-    // save gilgamesh@gmail.com | aklsdjfasdf.asdf..qwe..q.we...qwe.qw.easd
+    
 
-    // encrypt the password
+    
     const hashedPassword = bcrypt.hashSync(password, 8)
 
     // save the new user and hashed password to the db

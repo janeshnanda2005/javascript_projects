@@ -14,6 +14,7 @@ db.exec(`
 `)
 
 db.exec(`
+    
     CREATE TABLE IF NOT EXISTS todos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
